@@ -1,0 +1,114 @@
+body {
+    margin: 0 auto;
+    padding: 0;
+    box-sizing: border-box;
+    color: #fff;
+    background: scroll;
+    background-color: #000;
+    line-height: 1.0;
+    text-align: center;
+    font-family: 'Tektur', sans-serif;
+}
+
+.container {
+    margin: auto;
+    padding: 40px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    font-size: medium;    
+}
+header{
+    font-size:xx-large;
+    text-align: center;
+    justify-content: center;
+    background-color: #000;
+
+}
+
+section {
+    padding: 40px;
+    margin: auto;
+    width: 80% auto;
+    max-width: 800px;
+    transition: all 0.4s ease-in-out;
+    background-color: #000;
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    box-sizing: width=50%, height=50%;
+}
+
+section:hover {
+    box-shadow: 0 0 25px rgb(255, 0, 0);
+    border-radius: 20px;
+    transform: scale(1.05);
+    background: local;
+    background-color: #000;
+    color: #fff;
+}
+
+section h1, h2 {
+    margin-bottom: 10px;
+    font-size: 1.3em;
+    color: #ffffff;
+}
+
+section p {
+    margin-bottom: 10px;
+    font-size: 1.3em;
+    color: #a48181;
+}
+
+/* Social Icons Styling */
+.social-icons {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.social-icons li {
+    display: inline-block;
+}
+
+.social-icons a i {
+    font-size: 4.5em; /* Increase icon size */
+    color: #fff;
+    transition: color 0.3s ease;
+}
+
+.social-icons a:hover i {
+    color: #1da1f2;
+}
+
+/* Phone Links */
+.phone a {
+    text-decoration: none;
+    color: #ffffff;
+    font-size: 1.2em;
+}
+
+.phone a:hover {
+    text-decoration:dashed;
+    color: #ff0000b6;
+}
+.social-icons a i:hover {
+    color: #E4405F; /* Instagram */
+ }
+ .social-icons a[href*="twitter"] i:hover {
+    color: #1DA1F2; /* Twitter */
+ }
+ .social-icons a[href*="linkedin"] i:hover {
+    color: #0077B5; /* LinkedIn */
+ }
+ .social-icons a[href*="github"] i:hover {
+    color: #333; /* GitHub */
+ }
+ .social-icons a[href*="snapchat"] i:hover {
+    color: #FFFC00; /* Snapchat */
+ }
+ .social-icons a[href*="wa.me"] i:hover {
+    color: #25D366; /* WhatsApp */
+ }
