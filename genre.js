@@ -1,218 +1,66 @@
-import { createClient } from '@supabase/supabase-js';
-
-// Supabase configuration
-const supabaseUrl = 'https://hrjacqaonlgtgbwaifzh.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyamFjcWFvbmxndGdid2FpZnpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2ODA3MzUsImV4cCI6MjA3MTI1NjczNX0.jgDhHJmaG4qm9sZc-2qqDjcgR2ZGehaArNl75oJAPhU'; // Replace with your actual anon key
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-// Mix data management with Supabase
+// Mix data management
 class MixManager {
   constructor() {
-    this.mixes = []
+    this.mixes = this.loadMixes()
     this.currentlyPlaying = null
-    this.tableName = 'mixes'
-    this.likesTableName = 'mix_likes'
-    this.isLoading = false
   }
 
-  async loadMixes() {
-    if (this.isLoading) return this.mixes;
-    
-    try {
-      this.isLoading = true;
-      const { data, error } = await supabase
-        .from(this.tableName)
-        .select('*')
-        .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error loading mixes:', error);
-        return this.getDefaultMixes();
-      }
-
-      this.mixes = data || [];
-      this.isLoading = false;
-      return this.mixes;
-    } catch (error) {
-      console.error('Error in loadMixes:', error);
-      this.isLoading = false;
-      return this.getDefaultMixes();
+  loadMixes() {
+    const stored = localStorage.getItem("djMixes")
+    if (stored) {
+      return JSON.parse(stored)
     }
-  }
-
-  getDefaultMixes() {
-    // Fallback data when Supabase is not available
+    // Default sample data
     return [
       {
-        id: "sample1",
-        title: "Sample Mix 1",
-        artist: "DJ Sample",
-        genre: "House",
-        duration: "3:45",
-        audio_url: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
-        created_at: new Date().toISOString(),
+        id: "",
+        title: "",
+        artist: "",
+        genre: "",
+        duration: "",
+        audioUrl: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
+        createdAt: new Date().toISOString(),
       },
       {
-        id: "sample2", 
-        title: "Sample Mix 2",
-        artist: "DJ Example",
-        genre: "Techno",
-        duration: "4:12",
-        audio_url: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
-        created_at: new Date().toISOString(),
+        id: "",
+        title: "",
+        artist: "",
+        genre: "",
+        duration: "",
+        audioUrl: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
+        createdAt: new Date().toISOString(),
       },
-    ];
+    ]
+
+  }
+
+  saveMixes() {
+    localStorage.setItem("djMixes", JSON.stringify(this.mixes))
   }
 
   getAllMixes() {
-    return this.mixes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    return this.mixes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
   }
 
-  async addMix(mixData) {
-    try {
-      const { data, error } = await supabase
-        .from(this.tableName)
-        .insert([{
-          title: mixData.title,
-          artist: mixData.artist,
-          genre: mixData.genre,
-          duration: mixData.duration,
-          audio_url: mixData.audioUrl,
-          created_at: new Date().toISOString()
-        }])
-        .select();
-
-      if (error) {
-        console.error('Error adding mix:', error);
-        throw error;
-      }
-
-      const newMix = data[0];
-      this.mixes.unshift(newMix);
-      return newMix;
-    } catch (error) {
-      console.error('Error in addMix:', error);
-      throw error;
+  addMix(mixData) {
+    const newMix = {
+      id: Date.now().toString(),
+      ...mixData,
+      createdAt: new Date().toISOString(),
     }
+    this.mixes.push(newMix)
+    this.saveMixes()
+    return newMix
   }
 
-  async deleteMix(id) {
-    try {
-      const { error } = await supabase
-        .from(this.tableName)
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error deleting mix:', error);
-        throw error;
-      }
-
-      this.mixes = this.mixes.filter((mix) => mix.id !== id);
-      return true;
-    } catch (error) {
-      console.error('Error in deleteMix:', error);
-      throw error;
-    }
-  }
-
-  async toggleLike(mixId, userId = 'anonymous') {
-    try {
-      // Check if like exists
-      const { data: existingLike, error: checkError } = await supabase
-        .from(this.likesTableName)
-        .select('*')
-        .eq('mix_id', mixId)
-        .eq('user_id', userId)
-        .single();
-
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.error('Error checking like:', checkError);
-        return false;
-      }
-
-      if (existingLike) {
-        // Remove like
-        const { error: deleteError } = await supabase
-          .from(this.likesTableName)
-          .delete()
-          .eq('mix_id', mixId)
-          .eq('user_id', userId);
-
-        if (deleteError) {
-          console.error('Error removing like:', deleteError);
-          return false;
-        }
-        return false; // Not liked anymore
-      } else {
-        // Add like
-        const { error: insertError } = await supabase
-          .from(this.likesTableName)
-          .insert([{
-            mix_id: mixId,
-            user_id: userId,
-            created_at: new Date().toISOString()
-          }]);
-
-        if (insertError) {
-          console.error('Error adding like:', insertError);
-          return false;
-        }
-        return true; // Now liked
-      }
-    } catch (error) {
-      console.error('Error in toggleLike:', error);
-      return false;
-    }
-  }
-
-  async getLikeStatus(mixId, userId = 'anonymous') {
-    try {
-      const { data, error } = await supabase
-        .from(this.likesTableName)
-        .select('*')
-        .eq('mix_id', mixId)
-        .eq('user_id', userId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error getting like status:', error);
-        return false;
-      }
-
-      return !!data;
-    } catch (error) {
-      console.error('Error in getLikeStatus:', error);
-      return false;
-    }
-  }
-
-  async getLikesForMixes(mixIds, userId = 'anonymous') {
-    try {
-      const { data, error } = await supabase
-        .from(this.likesTableName)
-        .select('mix_id')
-        .in('mix_id', mixIds)
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('Error getting likes for mixes:', error);
-        return {};
-      }
-
-      const likesMap = {};
-      data.forEach(like => {
-        likesMap[like.mix_id] = true;
-      });
-      return likesMap;
-    } catch (error) {
-      console.error('Error in getLikesForMixes:', error);
-      return {};
-    }
+  deleteMix(id) {
+    this.mixes = this.mixes.filter((mix) => mix.id !== id)
+    this.saveMixes()
   }
 }
 
-// Audio player functionality (updated for Supabase)
+// Audio player functionality
 class AudioPlayer {
   constructor(audioElement, mixCard) {
     this.audio = audioElement
@@ -253,9 +101,7 @@ class AudioPlayer {
     this.isLoading = true
     this.hasError = false
     this.updatePlayButton()
-    if (this.errorMessage) {
-      this.errorMessage.style.display = "none"
-    }
+    this.errorMessage.style.display = "none"
   }
  
   handleCanPlay() {
@@ -265,21 +111,13 @@ class AudioPlayer {
   }
 
   handleLoadedMetadata() {
-    if (this.totalTimeEl) {
-      this.totalTimeEl.textContent = this.formatTime(this.audio.duration)
-    }
+    this.totalTimeEl.textContent = this.formatTime(this.audio.duration)
   }
 
   handleTimeUpdate() {
-    if (this.audio.duration) {
-      const progress = (this.audio.currentTime / this.audio.duration) * 100
-      if (this.progressFill) {
-        this.progressFill.style.width = `${progress}%`
-      }
-      if (this.currentTimeEl) {
-        this.currentTimeEl.textContent = this.formatTime(this.audio.currentTime)
-      }
-    }
+    const progress = (this.audio.currentTime / this.audio.duration) * 100
+    this.progressFill.style.width = `${progress}%`
+    this.currentTimeEl.textContent = this.formatTime(this.audio.currentTime)
   }
 
   handleEnded() {
@@ -295,9 +133,7 @@ class AudioPlayer {
     this.isPlaying = false
     this.isLoading = false
     this.updatePlayButton()
-    if (this.errorMessage) {
-      this.errorMessage.style.display = "block"
-    }
+    this.errorMessage.style.display = "block"
     console.error("Audio loading error:", this.audio.src)
   }
 
@@ -339,7 +175,7 @@ class AudioPlayer {
 
     if (this.isLoading) {
       this.playBtn.classList.add("loading")
-      icon.className = "fas fa-spinner fa-spin"
+      icon.className = "fas fa-spinner"
     } else if (this.hasError) {
       this.playBtn.classList.remove("loading")
       icon.className = "fas fa-exclamation-circle"
@@ -352,9 +188,7 @@ class AudioPlayer {
     }
 
     this.playBtn.disabled = this.hasError
-    if (this.downloadBtn) {
-      this.downloadBtn.disabled = this.hasError
-    }
+    this.downloadBtn.disabled = this.hasError
   }
 
   handleDownload() {
@@ -368,7 +202,6 @@ class AudioPlayer {
       link.href = this.audio.src
       link.download = `${this.mixCard.dataset.artist} - ${this.mixCard.dataset.title}.mp3`
       link.target = "_blank"
-      link.rel = "noopener noreferrer"
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -389,10 +222,8 @@ class AudioPlayer {
       try {
         await navigator.share(shareData)
       } catch (error) {
-        if (error.name !== 'AbortError') { // User cancelled sharing
-          console.error("Error sharing:", error)
-          this.fallbackShare(shareData)
-        }
+        console.error("Error sharing:", error)
+        this.fallbackShare(shareData)
       }
     } else {
       this.fallbackShare(shareData)
@@ -404,89 +235,64 @@ class AudioPlayer {
     const text = encodeURIComponent(shareData.text)
 
     const shareOptions = [
-      {
-        name: "Twitter",
-        url: `https://twitter.com/intent/tweet?text=${text}&url=${url}`
-      },
-      {
-        name: "Facebook",
-        url: `https://www.facebook.com/sharer/sharer.php?u=${url}`
-      },
-      {
-        name: "WhatsApp",
-        url: `https://wa.me/?text=${text}%20${url}`
-      },
-      {
-        name: "Instagram",
-        url: "https://www.instagram.com/j.e.y.b.e.e" 
-      },
-      {
-        name: "Snapchat",
-        url: "https://www.snapchat.com/add/jeybee20234690"
-      },
-      {
-        name: "GitHub",
-        url: "https://github.com/JeYBee1004"
-      }
-    ];
+  {
+    name: "Twitter",
+    url: `https://twitter.com/intent/tweet?text=${text}&url=${url}`
+  },
+  {
+    name: "Facebook",
+    url: `https://www.facebook.com/sharer/sharer.php?u=${url}`
+  },
+  {
+    name: "WhatsApp",
+    url: `https://wa.me/?text=${text}%20${url}`
+  },
+  {
+    name: "Instagram",
+    url: "https://www.instagram.com/j.e.y.b.e.e" 
+  },
+  {
+    name: "Snapchat",
+    url: "https://www.snapchat.com/add/jeybee20234690"
+  },
+  {
+    name: "GitHub",
+    url: "https://github.com/JeYBee1004"
+  }
+];
+
 
     const choice = prompt(
-      `Share via:\n${shareOptions.map((opt, i) => `${i + 1}. ${opt.name}`).join("\n")}\n\nEnter number (1-${shareOptions.length}):`,
+      `Share via:\n${shareOptions.map((opt, i) => `${i + 1}. ${opt.name}`).join("\n")}\n\nEnter number (1-3):`,
     )
 
     const selectedOption = shareOptions[Number.parseInt(choice) - 1]
     if (selectedOption) {
-      window.open(selectedOption.url, "_blank", "noopener,noreferrer")
+      window.open(selectedOption.url, "_blank")
     }
   }
 
-  async toggleLike() {
+  toggleLike() {
     const icon = this.likeBtn.querySelector("i")
-    const mixId = this.mixCard.dataset.mixId
-    const isCurrentlyLiked = this.likeBtn.classList.contains("liked")
+    const isLiked = this.likeBtn.classList.contains("liked")
 
-    try {
-      // Optimistic update
-      if (isCurrentlyLiked) {
-        this.likeBtn.classList.remove("liked")
-        icon.className = "far fa-heart"
-      } else {
-        this.likeBtn.classList.add("liked")
-        icon.className = "fas fa-heart"
-      }
-
-      // Update in Supabase
-      const newLikeStatus = await mixManager.toggleLike(mixId)
-      
-      // Sync with actual result (in case of conflicts)
-      if (newLikeStatus !== !isCurrentlyLiked) {
-        if (newLikeStatus) {
-          this.likeBtn.classList.add("liked")
-          icon.className = "fas fa-heart"
-        } else {
-          this.likeBtn.classList.remove("liked")
-          icon.className = "far fa-heart"
-        }
-      }
-
-    } catch (error) {
-      console.error('Error toggling like:', error)
-      // Revert optimistic update on error
-      if (isCurrentlyLiked) {
-        this.likeBtn.classList.add("liked")
-        icon.className = "fas fa-heart"
-      } else {
-        this.likeBtn.classList.remove("liked")
-        icon.className = "far fa-heart"
-      }
-      
-      // Show user-friendly error
-      alert('Unable to update like status. Please try again.')
+    if (isLiked) {
+      this.likeBtn.classList.remove("liked")
+      icon.className = "far fa-heart"
+    } else {
+      this.likeBtn.classList.add("liked")
+      icon.className = "fas fa-heart"
     }
+
+    // Save like state to localStorage
+    const mixId = this.mixCard.dataset.mixId
+    const likes = JSON.parse(localStorage.getItem("mixLikes") || "{}")
+    likes[mixId] = !isLiked
+    localStorage.setItem("mixLikes", JSON.stringify(likes))
   }
 
   formatTime(time) {
-    if (isNaN(time) || !isFinite(time)) return "0:00"
+    if (isNaN(time)) return "0:00"
     const minutes = Math.floor(time / 60)
     const seconds = Math.floor(time % 60)
     return `${minutes}:${seconds.toString().padStart(2, "0")}`
@@ -496,13 +302,8 @@ class AudioPlayer {
 // Main application
 const mixManager = new MixManager()
 
-async function createMixCard(mix) {
+function createMixCard(mix) {
   const template = document.getElementById("mix-card-template")
-  if (!template) {
-    console.error('Mix card template not found')
-    return null
-  }
-
   const card = template.content.cloneNode(true)
   const mixCard = card.querySelector(".mix-card")
 
@@ -513,154 +314,64 @@ async function createMixCard(mix) {
   mixCard.dataset.genre = mix.genre
 
   // Populate content
-  const titleEl = card.querySelector(".mix-title")
-  const artistEl = card.querySelector(".mix-artist")
-  const genreEl = card.querySelector(".mix-genre")
-  const totalTimeEl = card.querySelector(".total-time")
+  card.querySelector(".mix-title").textContent = mix.title
+  card.querySelector(".mix-artist").textContent = mix.artist
+  card.querySelector(".mix-genre").textContent = mix.genre
+  card.querySelector(".total-time").textContent = mix.duration
 
-  if (titleEl) titleEl.textContent = mix.title
-  if (artistEl) artistEl.textContent = mix.artist
-  if (genreEl) genreEl.textContent = mix.genre
-  if (totalTimeEl) totalTimeEl.textContent = mix.duration
-
-  // Set audio source - handle both old and new field names
+  // Set audio source
   const audio = card.querySelector("audio")
-  if (audio) {
-    audio.src = mix.audio_url || mix.audioUrl
-  }
+  audio.src = mix.audioUrl
 
   // Check if mix is liked
-  try {
-    const isLiked = await mixManager.getLikeStatus(mix.id)
-    if (isLiked) {
-      const likeBtn = card.querySelector(".like-btn")
-      const icon = likeBtn?.querySelector("i")
-      if (likeBtn && icon) {
-        likeBtn.classList.add("liked")
-        icon.className = "fas fa-heart"
-      }
-    }
-  } catch (error) {
-    console.error('Error checking like status:', error)
+  const likes = JSON.parse(localStorage.getItem("mixLikes") || "{}")
+  if (likes[mix.id]) {
+    const likeBtn = card.querySelector(".like-btn")
+    const icon = likeBtn.querySelector("i")
+    likeBtn.classList.add("liked")
+    icon.className = "fas fa-heart"
   }
 
   return { card, mixCard, audio }
 }
 
-async function renderMixes() {
+function renderMixes() {
   const container = document.getElementById("mixes-container")
   const noMixes = document.getElementById("no-mixes")
-  const loadingIndicator = document.getElementById("loading-mixes")
-  
-  if (!container) {
-    console.error('Mixes container not found')
+  const pageGenre = document.body.dataset.genre?.toLowerCase() || ""
+
+  const allMixes = mixManager.getAllMixes()
+  const genreMixes = allMixes.filter(
+    (mix) => mix.genre.toLowerCase() === pageGenre
+  )
+
+  container.innerHTML = ""
+
+  if (genreMixes.length === 0) {
+    noMixes.style.display = "block"
     return
   }
 
-  const pageGenre = document.body.dataset.genre?.toLowerCase() || ""
+  noMixes.style.display = "none"
 
-  try {
-    // Show loading indicator
-    if (loadingIndicator) {
-      loadingIndicator.style.display = "block"
-    }
-    if (noMixes) {
-      noMixes.style.display = "none"
-    }
-
-    // Load mixes from Supabase
-    const allMixes = await mixManager.loadMixes()
-    
-    // Filter by genre if specified
-    const genreMixes = pageGenre ? 
-      allMixes.filter(mix => mix.genre.toLowerCase() === pageGenre) : 
-      allMixes
-
-    // Hide loading indicator
-    if (loadingIndicator) {
-      loadingIndicator.style.display = "none"
-    }
-
-    // Clear container
-    container.innerHTML = ""
-
-    if (genreMixes.length === 0) {
-      if (noMixes) {
-        noMixes.style.display = "block"
-      }
-      return
-    }
-
-    if (noMixes) {
-      noMixes.style.display = "none"
-    }
-
-    // Create mix cards
-    for (const mix of genreMixes) {
-      try {
-        const cardData = await createMixCard(mix)
-        if (cardData) {
-          const { card, mixCard, audio } = cardData
-          container.appendChild(card)
-          new AudioPlayer(audio, mixCard)
-        }
-      } catch (error) {
-        console.error('Error creating mix card:', error)
-      }
-    }
-
-  } catch (error) {
-    console.error('Error rendering mixes:', error)
-    
-    // Hide loading indicator
-    if (loadingIndicator) {
-      loadingIndicator.style.display = "none"
-    }
-    
-    // Show error message
-    if (container) {
-      container.innerHTML = '<div class="error-message">Failed to load mixes. Please refresh the page.</div>'
-    }
-  }
+  genreMixes.forEach((mix) => {
+    const { card, mixCard, audio } = createMixCard(mix)
+    container.appendChild(card)
+    new AudioPlayer(audio, mixCard)
+  })
 }
+
+
 
 // Initialize the application
-document.addEventListener("DOMContentLoaded", async () => {
-  await renderMixes()
+document.addEventListener("DOMContentLoaded", () => {
+  renderMixes()
 })
 
-// Auto-refresh mixes every 30 seconds (optional)
-setInterval(async () => {
-  try {
-    const currentMixCount = mixManager.mixes.length
-    await mixManager.loadMixes()
-    
-    // Only re-render if mix count changed
-    if (mixManager.mixes.length !== currentMixCount) {
-      await renderMixes()
-    }
-  } catch (error) {
-    console.error('Error in auto-refresh:', error)
+// Listen for storage changes (when new mixes are added from admin panel)
+window.addEventListener("storage", (e) => {
+  if (e.key === "djMixes") {
+    mixManager.mixes = mixManager.loadMixes()
+    renderMixes()
   }
-}, 30000)
-
-// Listen for Supabase real-time updates (optional)
-try {
-  supabase
-    .channel('mix-changes')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'mixes'
-    }, (payload) => {
-      console.log('Mix table change detected:', payload)
-      // Reload mixes when changes occur
-      setTimeout(() => renderMixes(), 1000)
-    })
-    .subscribe()
-} catch (error) {
-  console.error('Error setting up real-time subscription:', error)
-}
-
-// Export for global access if needed
-window.mixManager = mixManager;
+})
